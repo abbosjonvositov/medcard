@@ -27,7 +27,8 @@ from django.core.exceptions import ObjectDoesNotExist
 class PatientSignupAPIView(APIView):
     @swagger_auto_schema(
         request_body=PatientProfileSerializer,
-        responses={status.HTTP_201_CREATED: 'Signup data cached. Please verify your email.'}
+        responses={status.HTTP_201_CREATED: 'Signup data cached. Please verify your email.'},
+        tags=['Patient Profile'],
     )
     def post(self, request):
         serializer = PatientProfileSerializer(data=request.data)
@@ -74,7 +75,9 @@ class VerifyEmailAPIView(APIView):
             status.HTTP_200_OK: "Email verified successfully. Token and username returned.",
             status.HTTP_400_BAD_REQUEST: "Invalid verification code.",
             status.HTTP_404_NOT_FOUND: "Verification data not found."
-        }
+        },
+        tags=['Email verification'],
+
     )
     def post(self, request):
         serializer = EmailVerificationSerializer(data=request.data)
@@ -130,7 +133,9 @@ class PatientRetrieveAPIView(APIView):
                                                  schema=PatientProfileRetrievalSerializer),
             status.HTTP_404_NOT_FOUND: openapi.Response(description="User not found or no associated patient profile"),
             status.HTTP_500_INTERNAL_SERVER_ERROR: openapi.Response(description="Internal Server Error")
-        }
+        },
+        tags=['Patient Profile'],
+
     )
     def get(self, request, username):
         # Simplify exception handling to focus on common cases
@@ -179,7 +184,9 @@ class DoctorDetailView(APIView):
         responses={
             200: openapi.Response(description="Doctor details retrieved successfully", schema=DoctorSerializer),
             404: "Doctor not found"
-        }
+        },
+        tags=['Doctor Detail'],
+
     )
     def get(self, request, pk, format=None):
         try:
@@ -276,3 +283,24 @@ class AppointmentAPIViewPost(APIView):
             serializer.save(patient=request.user)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class AppointmentListView(APIView):
+    authentication_classes = [SessionAuthentication, TokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    @swagger_auto_schema(
+        operation_summary="List all appointments",
+        operation_description="Retrieve a list of all appointments with detailed information about each.",
+        responses={
+            200: openapi.Response(
+                description="A list of all appointments",
+                schema=AppointmentDetailSerializer(many=True)
+            )
+        },
+        tags=['Appointments']
+    )
+    def get(self, request):
+        appointments = Appointment.objects.all()
+        serializer = AppointmentDetailSerializer(appointments, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)

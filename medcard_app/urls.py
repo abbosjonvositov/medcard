@@ -29,6 +29,7 @@ urlpatterns = [
 
     path('appointments_crud/<int:pk>/', AppointmentAPIView.as_view(), name='appointment-crud'),
     path('appointments_crud/', AppointmentAPIViewPost.as_view(), name='appointment-create'),
+    path('appointments_list/', AppointmentListView.as_view(), name='appointment-list'),
 
     path('swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
 ]
