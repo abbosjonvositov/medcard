@@ -18,8 +18,17 @@ schema_view = get_schema_view(
 )
 
 urlpatterns = [
-    path('patient_crud/', PatientSignupAPIView.as_view(), name='signup'),
+    path('patient_crud/', PatientSignupAPIView.as_view(), name='patient_crud'),
     path('patient_crud/<str:username>/', PatientRetrieveAPIView.as_view(), name='patient-detail'),
+
     path('verify-email/', VerifyEmailAPIView.as_view(), name='verify-email'),
+
+    path('doctor_detail/<int:pk>/', DoctorDetailView.as_view(), name='doctor_detail'),
+
+    path('clinics/', ClinicListView.as_view(), name='clinics-list'),
+
+    path('appointments_crud/<int:pk>/', AppointmentAPIView.as_view(), name='appointment-crud'),
+    path('appointments_crud/', AppointmentAPIViewPost.as_view(), name='appointment-create'),
+
     path('swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
 ]

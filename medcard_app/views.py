@@ -37,7 +37,7 @@ class PatientSignupAPIView(APIView):
 
             # Generate a verification code
             verification_code = ''.join(random.choices('0123456789', k=4))
-
+            print(verification_code)
             # Serialize user data and patient profile data into a form suitable for caching
             user_data = validated_data.pop('user')  # separate the nested user data
             profile_data = validated_data  # remaining data is for the patient profile
@@ -146,3 +146,127 @@ class PatientRetrieveAPIView(APIView):
         except Exception as e:
             # Log exception details here if needed
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    @swagger_auto_schema(
+        operation_summary="Update Patient Profile",
+        operation_description="Updates an existing patient profile based on the username, including email, phone, and address.",
+        request_body=PatientProfileUpdateSerializer,
+        responses={
+            status.HTTP_200_OK: openapi.Response(description="Patient profile updated successfully",
+                                                 schema=PatientProfileUpdateSerializer),
+            status.HTTP_400_BAD_REQUEST: openapi.Response(description="Invalid input data"),
+            status.HTTP_404_NOT_FOUND: openapi.Response(description="User not found or no associated patient profile"),
+            status.HTTP_500_INTERNAL_SERVER_ERROR: openapi.Response(description="Internal Server Error")
+        }
+    )
+    def put(self, request, username):
+        user = get_object_or_404(User, username=username)
+        patient_profile = get_object_or_404(PatientProfile, patient_username=user)  # Correct field used here
+        serializer = PatientProfileUpdateSerializer(patient_profile, data=request.data, partial=True)
+        if serializer.is_valid(raise_exception=True):
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class DoctorDetailView(APIView):
+    authentication_classes = [SessionAuthentication, TokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    @swagger_auto_schema(
+        operation_summary="Get detailed information about a doctor",
+        operation_description="Retrieves comprehensive details about a doctor, including work experience, qualifications, reviews, and availability schedules.",
+        responses={
+            200: openapi.Response(description="Doctor details retrieved successfully", schema=DoctorSerializer),
+            404: "Doctor not found"
+        }
+    )
+    def get(self, request, pk, format=None):
+        try:
+            doctor = Doctors.objects.get(pk=pk)
+            serializer = DoctorSerializer(doctor)
+            return Response(serializer.data)
+        except Doctors.DoesNotExist:
+            return Response({'error': 'Doctor not found'}, status=status.HTTP_404_NOT_FOUND)
+
+
+class ClinicListView(APIView):
+    authentication_classes = [SessionAuthentication, TokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    @swagger_auto_schema(
+        operation_summary="List all clinics",
+        operation_description="Retrieve a list of clinics with details of associated doctors, including their specialities and availabilities.",
+        responses={
+            200: openapi.Response(
+                description="A list of clinics",
+                schema=ClinicListSerializer(many=True)
+            ),
+            404: "Not Found"
+        },
+        tags=['Clinics'],
+    )
+    def get(self, request):
+        clinics = Clinics.objects.prefetch_related(
+            'doctors_set',
+            'doctors_set__availabilities',
+            'doctors_set__speciality_name'
+        ).all()
+        serializer = ClinicListSerializer(clinics, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class AppointmentAPIView(APIView):
+    @swagger_auto_schema(
+        operation_summary="Retrieve an appointment",
+        operation_description="Retrieve detailed information about an appointment by its ID.",
+        responses={
+            200: openapi.Response(description='Success', schema=AppointmentDetailSerializer),
+            404: 'Not Found'
+        },
+        tags=['Appointments'],
+    )
+    def get(self, request, pk, *args, **kwargs):
+        appointment = get_object_or_404(Appointment, pk=pk)
+        serializer = AppointmentDetailSerializer(appointment)
+        return Response(serializer.data)
+
+    @swagger_auto_schema(
+        operation_summary="Update an appointment",
+        operation_description="Update an existing appointment by its ID.",
+        request_body=AppointmentSerializer,
+        responses={
+            200: openapi.Response(description='Success', schema=AppointmentSerializer),
+            400: openapi.Response(description='Bad Request - Invalid data'),
+            404: 'Not Found'
+        },
+        tags=['Appointments'],
+    )
+    def put(self, request, pk, *args, **kwargs):
+        appointment = get_object_or_404(Appointment, pk=pk)
+        serializer = AppointmentSerializer(appointment, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class AppointmentAPIViewPost(APIView):
+    @swagger_auto_schema(
+        operation_summary="Create a new appointment",
+        operation_description="Creates a new appointment checking against doctor's availability and ensuring 30-minute time slots.",
+        request_body=AppointmentSerializer,
+        responses={
+            201: openapi.Response(description="Appointment created successfully", schema=AppointmentSerializer),
+            400: openapi.Response(description="Invalid input data or doctor is not available at the given time"),
+            404: openapi.Response(description="Not Found"),
+            403: openapi.Response(description="Permission denied")
+        },
+        tags=['Appointments'],
+    )
+    def post(self, request, *args, **kwargs):
+        serializer = AppointmentSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save(patient=request.user)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
