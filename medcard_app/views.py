@@ -217,6 +217,9 @@ class ClinicListView(APIView):
 
 
 class AppointmentAPIView(APIView):
+    authentication_classes = [SessionAuthentication, TokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
     @swagger_auto_schema(
         operation_summary="Retrieve an appointment",
         operation_description="Retrieve detailed information about an appointment by its ID.",
@@ -252,6 +255,9 @@ class AppointmentAPIView(APIView):
 
 
 class AppointmentAPIViewPost(APIView):
+    authentication_classes = [SessionAuthentication, TokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
     @swagger_auto_schema(
         operation_summary="Create a new appointment",
         operation_description="Creates a new appointment checking against doctor's availability and ensuring 30-minute time slots.",
