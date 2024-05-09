@@ -229,3 +229,14 @@ class AppointmentDetailSerializer(serializers.ModelSerializer):
             'end_time': {'help_text': 'End time of the appointment (formatted as HH:MM, 24-hour clock).'},
             'status': {'help_text': 'Status of the appointment (scheduled, cancelled, completed).'}
         }
+
+
+class LoginSerializer(serializers.Serializer):
+    username = serializers.CharField(
+        max_length=150,
+        help_text="Username of the user."
+    )
+    password = serializers.CharField(
+        max_length=128,
+        help_text="Password of the user."
+    )

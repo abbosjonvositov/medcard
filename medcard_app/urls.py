@@ -20,6 +20,7 @@ schema_view = get_schema_view(
 urlpatterns = [
     path('patient_crud/', PatientSignupAPIView.as_view(), name='patient_crud'),
     path('patient_crud/<str:username>/', PatientRetrieveAPIView.as_view(), name='patient-detail'),
+    path('login/', LoginAPIView.as_view(), name='login'),
 
     path('verify-email/', VerifyEmailAPIView.as_view(), name='verify-email'),
 

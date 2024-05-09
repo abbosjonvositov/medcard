@@ -158,3 +158,61 @@ class Appointment(models.Model):
 
     def __str__(self):
         return f"{self.date} at {self.start_time.strftime('%H:%M')}"
+
+
+class Medication(models.Model):
+    name = models.CharField(max_length=255)
+    dosage = models.CharField(max_length=255)
+    side_effects = models.TextField()
+    start_date = models.DateField()
+    end_date = models.DateField(null=True, blank=True)
+
+    def __str__(self):
+        return self.name
+
+
+class Allergies(models.Model):
+    allergy_name = models.CharField(max_length=255)
+    allergy_description = models.TextField()
+
+    def __str__(self):
+        return self.allergy_name
+
+
+class MedicalCondition(models.Model):
+    patient_id = models.ForeignKey('PatientMedicalProfile', on_delete=models.CASCADE)
+    diagnosis = models.TextField()
+
+    def __str__(self):
+        return self.diagnosis
+
+
+class ChronicIllnesses(models.Model):
+    chronic_illness_name = models.CharField(max_length=255)
+    description = models.TextField()
+    monitoring_freq = models.CharField(max_length=255)
+    severity_stage = models.CharField(max_length=255)
+
+    def __str__(self):
+        return self.chronic_illness_name
+
+
+class GeneticIllnesses(models.Model):
+    genetic_illness_name = models.CharField(max_length=255)
+    description = models.TextField()
+
+    def __str__(self):
+        return self.genetic_illness_name
+
+
+class PatientMedicalProfile(models.Model):
+    patient_id = models.IntegerField()
+    allergy_id = models.ForeignKey(Allergies, on_delete=models.CASCADE)
+    genetic_id = models.ForeignKey(GeneticIllnesses, on_delete=models.CASCADE)
+    medication_id = models.ForeignKey(Medication, on_delete=models.CASCADE)
+    chron_illness_id = models.ForeignKey(ChronicIllnesses, on_delete=models.CASCADE)
+    condition_id = models.ForeignKey(MedicalCondition, on_delete=models.CASCADE)
+    doctor_notes = models.TextField()
+
+    def __str__(self):
+        return f"Profile {self.id} for Patient {self.patient_id}"

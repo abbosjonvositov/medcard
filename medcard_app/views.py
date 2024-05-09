@@ -319,3 +319,62 @@ class AppointmentListView(APIView):
                     weekdays[day_of_week].append(item)
 
         return Response(weekdays, status=status.HTTP_200_OK)
+
+
+class LoginAPIView(APIView):
+    @swagger_auto_schema(
+        operation_description="Login with username and password. Returns token, username and role if successful.",
+        request_body=LoginSerializer,
+        responses={
+            status.HTTP_200_OK: "Login successful. Token, username and role returned.",
+            status.HTTP_400_BAD_REQUEST: "Invalid username or password. Email not verified. Email verification record not found.",
+            status.HTTP_401_UNAUTHORIZED: "Username and password are required.",
+            status.HTTP_500_INTERNAL_SERVER_ERROR: "An error occurred while processing your request. Please try again later."
+        }
+    )
+    def post(self, request):
+        try:
+            serializer = LoginSerializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            username = serializer.validated_data.get('username')  # Using get() to avoid KeyError
+            password = serializer.validated_data.get('password')  # Using get() to avoid KeyError
+
+            if not username or not password:
+                return Response({'detail': 'Username and password are required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+            user = authenticate(request, username=username, password=password)
+
+            if user is None:
+                return Response({'detail': 'Invalid username or password.'}, status=status.HTTP_401_UNAUTHORIZED)
+
+            if 'DOC' not in username:
+                # Check if email is verified
+                try:
+                    email_verification = EmailVerification.objects.get(user=user)
+                    if not email_verification.verified:
+                        return Response({'detail': 'Email not verified. Please verify your email.'},
+                                        status=status.HTTP_400_BAD_REQUEST)
+                except ObjectDoesNotExist:
+                    return Response({'detail': 'Email verification record not found. Please sign up again.'},
+                                    status=status.HTTP_400_BAD_REQUEST)
+
+            # Assign role based on username
+            role = 'patient' if 'DOC' in username else 'patient'
+
+            # Generate or get token
+            token, created = Token.objects.get_or_create(user=user)
+
+            login(request, user)
+
+            # Save username and role to cache
+            cache.set(user.email, {'username': username, 'role': role})
+
+            return Response({'token': token.key, 'username': username, 'role': role, 'success': True},
+                            status=status.HTTP_200_OK)
+
+        except Exception as e:
+            print(e)
+            return Response(
+                {'detail': 'An error occurred while processing your request. Please try again later.',
+                 'success': False},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR)
