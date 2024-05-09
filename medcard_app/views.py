@@ -3,6 +3,7 @@ from django.core.cache import cache
 from django.contrib.auth import authenticate, login, logout
 from django.core.mail import send_mail
 from drf_yasg.utils import swagger_auto_schema
+from django.utils.dateparse import parse_date
 from rest_framework.authentication import SessionAuthentication, TokenAuthentication
 from rest_framework.permissions import IsAuthenticated
 from django.conf import settings
@@ -291,11 +292,12 @@ class AppointmentListView(APIView):
 
     @swagger_auto_schema(
         operation_summary="List all appointments",
-        operation_description="Retrieve a list of all appointments with detailed information about each.",
+        operation_description="Retrieve a list of all appointments organized by day of the week.",
         responses={
             200: openapi.Response(
-                description="A list of all appointments",
+                description="A dictionary of appointments grouped by day of the week",
                 schema=AppointmentDetailSerializer(many=True)
+                # This description might need to be adjusted based on actual schema
             )
         },
         tags=['Appointments']
@@ -303,4 +305,17 @@ class AppointmentListView(APIView):
     def get(self, request):
         appointments = Appointment.objects.all()
         serializer = AppointmentDetailSerializer(appointments, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        data = serializer.data
+
+        # Create a dictionary to hold the appointments by weekdays
+        weekdays = {day: [] for day in ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']}
+
+        # Group appointments by the day of the week
+        for item in data:
+            appointment_date = parse_date(item['date'])
+            if appointment_date:
+                day_of_week = appointment_date.strftime('%A').lower()
+                if day_of_week in weekdays:
+                    weekdays[day_of_week].append(item)
+
+        return Response(weekdays, status=status.HTTP_200_OK)
